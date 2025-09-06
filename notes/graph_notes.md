@@ -10,6 +10,7 @@
     - freq/color → DSU on Trees or Mo’s.
   - Special problems → Centroid Decomposition, Tree DP, Diameter.
   - Dynamic trees → Link-Cut Trees, ETT.
+  - DSU on trees
 
 - Topological sort
   - linear ordering of vertices for a DAG such that for
@@ -55,14 +56,24 @@
   7. Dynamic Shortest Path
   - IMPOSSIBLE -> (-ve wts undir) or (-ve cyl dir)
 
-- Euler path
-  - Visit all edges exactly once
-  - Starting point matters
+- euler path (undirected)
+  - visit all edges exactly once
+  - starting point matters
+  - odd degree -> exactly 0/2 vertices
+  - graph is connected (isolated vertices are ignored)
 
-- Euler circuit
-  - Euler path + same start and end
-  - Starting point can be any in the circuit if any
-  - All nodes in the circuit have even degree
+- euler circuit (undirected)
+  - euler path + start = end
+  - starting point can be any in the circuit if any
+  - even degree -> all vertices
+  - graph is connected (isolated vertices are ignored)
+
+- Minimum Spanning Tree (MST)
+  - Prim's
+    - start with a src, PQ stores (u, v), u is part of MST, v is outside
+    - pick min-weight edge from PQ, if v is visited (ignore), else consider it
+    - add neighbour edges of the vertex visited, return edges of MST
+  - Kruskal's
 
 - bridges
   - critical connections
@@ -70,6 +81,12 @@
 
 - cycles
   - Johnson’s algorithm - cycle enumeration
+
+- union find or DSU (Disjoint Set Union)
+  - naive -> O(N)
+  - optimal -> find (path compression) + union (size/rank) - O(⍺(N)) (amortized complexity)
+    - find - path compression -> O(⍺(N))
+    - union - size/rank -> O(logN)
 
 ## Additional Variations
 

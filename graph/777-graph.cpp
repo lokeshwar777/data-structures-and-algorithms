@@ -8,17 +8,23 @@ using min_pq = priority_queue<T, vector<T>, greater<T>>;
 struct Edge {
     int u, v, w;
     Edge(int from, int to, int weight) : u(from), v(to), w(weight) {}
+
+    // max-heap (default, uses operator<)
+    bool operator<(const Edge& other) const { return w < other.w; };
+
+    // min-heap (greater<Edge>, uses operator>)
+    bool operator>(const Edge& other) const { return w > other.w; };
 };
 
 struct Node {
     int u, cst;
     Node(int node, int cost) : u(node), cst(cost) {}
 
-    // max-heap
-    bool operator<(const Node& other) const { return cst > other.cst; };
+    // max-heap (default, uses operator<)
+    bool operator<(const Node& other) const { return cst < other.cst; };
 
-    // min-heap
-    // bool operator<(const Node& other) const { return cst < other.cst; };
+    // min-heap (greater<Node>, uses operator>)
+    bool operator>(const Node& other) const { return cst > other.cst; };
 };
 
 const int MAX_N = 2e6 + 5, INF = 1e9 + 5;  // 4e18
@@ -28,6 +34,29 @@ int N, M, parent[MAX_N], dist[MAX_N], path_vis[MAX_N], indeg[MAX_N],
 vector<pair<int, int>> g[MAX_N];  // adj list : g[u] is list of {v, w}
 bitset<MAX_N> vis;
 vector<int> cycle_path;
+
+struct DSU {
+    vector<int> par, sz;
+
+    DSU(int n) {
+        sz.resize(n + 1, 1);
+        par.resize(n + 1);
+        for (int i = 1; i <= n; ++i) par[i] = i;
+    }
+
+    int find(int u) { return par[u] = (u == par[u]) ? u : find(par[u]); }
+
+    void union_sz(int a, int b) {
+        a = find(a);
+        b = find(b);
+        if (a == b) return;
+        if (sz[a] > sz[b]) swap(a, b);
+        par[a] = b;
+        sz[b] += sz[a];
+    }
+
+    bool is_conn(int a, int b) { return find(a) == find(b); }
+};
 
 // ---------------- basic ----------------------
 
@@ -114,27 +143,29 @@ vector<int> get_path(int src, int dst) {
 }
 
 int neg_cycle_path(int u) {
+    // ensure u is part of cycle
     for (int i = 1; i <= N; ++i) {
         u = parent[u];
         if (u == -1) return 0;
     }
-    // now u is part of cycle
-    for (int x = u; cycle_path.empty() || x != u; x = parent[x])
+    for (int x = u; cycle_path.empty() || x != u; x = parent[x]) {
         cycle_path.push_back(x);
+    }
     cycle_path.push_back(u);
     reverse(cycle_path.begin(), cycle_path.end());
     return 1;
 }
 
-bool neg_cycle(const vector<Edge>& edges) {
-    for (Edge e : edges) {
-        int u = e.u, v = e.v, w = e.w;
-        if (dist[u] != INF && dist[u] + w < dist[v]) {
-            parent[v] = u;
-            return neg_cycle_path(v);
+bool is_connected() {
+    bool done = 0;
+    for (int i = 1; i <= N; ++i) {
+        if (indeg[i] && !vis[i] && !done) {
+            done = 1;
+            dfs(i);
         }
+        if (indeg[i] && !vis[i] && done) return 0;
     }
-    return 0;
+    return 1;
 }
 
 // ---------------- shortest -------------------
@@ -231,11 +262,10 @@ vector<int> dijkstra_dense(int src = 1) {
 // vis[])
 int dijkstra(int src, int dst) {
     // max-heap
-    // priority_queue<Node> pq;  // uses operator< inside struct
+    // priority_queue<Node> pq;  // uses operator<
 
     // min-heap
-    auto cmp = [](const Node& a, const Node& b) { return a.cst > b.cst; };
-    priority_queue<Node, vector<Node>, decltype(cmp)> pq(cmp);
+    min_pq<Node> pq;  // uses operator>
 
     pq.push(Node(src, 0));
     dist[src] = 0;
@@ -263,22 +293,23 @@ int dijkstra(int src, int dst) {
 // Bellman–Ford algorithm -> O(V * E), -ve weights + no cycles
 // V - 1 relaxations - shortest path (simple) can have atmost V - 1 edges
 // change in distance in the Vth relaxation detects negative cycle
-// dependent on source node
+// returns whether the graph has a negative cycle starting at source=src
 int bellman_ford(const vector<Edge>& edges, int src = -1) {
     for (int i = 1; i <= N; ++i) {
         dist[i] = (src == -1 || i == src) ? 0 : INF;
         parent[i] = -1;
     }
-    for (int i = 1; i <= N - 1; ++i) {
+    for (int i = 1; i <= N; ++i) {
         for (Edge e : edges) {
             int u = e.u, v = e.v, w = e.w;
             if (dist[u] != INF && dist[u] + w < dist[v]) {
-                dist[v] = dist[u] + w;
                 parent[v] = u;
+                if (i == N) return neg_cycle_path(v);
+                dist[v] = dist[u] + w;
             }
         }
     }
-    return neg_cycle(edges);  // actual negative cycle check
+    return 0;
 }
 
 // Floyd–Warshall algorithm -> O(V^3) - APSP
@@ -301,7 +332,7 @@ int SPFA() {
     return -1;
 }
 
-// ---------------- cycles ---------------------
+// ---------------- cycles, paths & circuits---------------------
 
 void topo_sort_DFS(int u, vector<int>& topo_sort) {
     if (vis[u]) return;
@@ -397,6 +428,7 @@ bool has_cycle_DFS_dir(int u, int p = -1) {
     return 0;
 }
 
+// kahn's algo = Topological Sort via BFS on DAGs
 // cycle detection: BFS + directed (no path)
 bool has_cycle_BFS_dir() {
     vector<int> topo_sort = topo_sort_BFS();
@@ -405,8 +437,6 @@ bool has_cycle_BFS_dir() {
 
 // BFS lacks a recursion stack/state history, so it can’t trace back edges to
 // rebuild the actual cycle path in directed graphs.
-
-// ----------------- coloring/bipartite ---------------------
 
 // colors should be initially not set i.e -1, returns is bipartite
 bool coloring_DFS(int u, int p = -1, int cur = 0) {
@@ -423,13 +453,77 @@ bool coloring_BFS(int src, int start = 0) {
     return 1;
 }
 
+// euler path - 0/2 odd degree vertices
+bool has_euler_path() {
+    int odd_cnt = 0;
+    for (int i = 1; i <= N; ++i) odd_cnt += indeg[i] & 1;
+    return (!odd_cnt || odd_cnt == 2) && is_connected();
+}
+
+// euler circuit - all even degree vertices
+bool has_euler_circuit() {
+    for (int i = 1; i <= N; ++i) {
+        if (indeg[i] & 1) return 0;
+    }
+    return is_connected();
+}
+
 // ----------------- algos ---------------------
 
-// kahn's algo = Topological Sort via BFS on DAGs
-// kosaraju's / tarjan's algo
 // prim's algo
+// PQ stores edges (u,v): u inside MST, v outside
+// Add edge if v not visited
+pair<int, vector<Edge>> prims_mst(int src = 1) {
+    int tot_cst = 0;
+    vector<Edge> mst_edges;
+    min_pq<Edge> pq;
+    vis[src] = 1;
+    for (auto& [v, w] : g[src]) pq.emplace(src, v, w);
+    while (!pq.empty()) {
+        auto e = pq.top();
+        pq.pop();
+        // u is already part of MST
+        int u = e.u, v = e.v, w = e.w;
+        if (vis[v]) continue;
+        vis[v] = 1;  // v also becomes part of MST
+        tot_cst += w;
+        mst_edges.push_back(e);
+        for (auto& [vv, ww] : g[v]) {
+            if (!vis[vv]) pq.emplace(v, vv, ww);
+        }
+    }
+    if ((int) mst_edges.size() != N - 1) return make_pair(0, vector<Edge>());
+    return make_pair(tot_cst, mst_edges);
+}
+
 // kruskal's algo
+pair<int, vector<Edge>> kruskals_mst(vector<Edge> edges) {
+    int tot_cst = 0;
+    vector<Edge> mst_edges;
+    DSU dsu(N);
+    sort(edges.begin(), edges.end());
+    for (Edge e : edges) {
+        if (dsu.is_conn(e.u, e.v)) continue;
+        tot_cst += e.w;
+        mst_edges.push_back(e);
+        dsu.union_sz(e.u, e.v);
+    }
+    if ((int) mst_edges.size() != N - 1) return make_pair(0, vector<Edge>());
+    return make_pair(tot_cst, mst_edges);
+}
+
 // johnson’s algo
+// kosaraju's / tarjan's algo
+
+// Hierholzer’s algo
+vector<int> get_euler_path() {
+    vector<int> euler_path;
+    return euler_path;
+}
+vector<int> get_euler_circuit() {
+    vector<int> euler_circuit;
+    return euler_circuit;
+}
 
 // ----------------- TODOs ----------------------
 
@@ -518,6 +612,10 @@ void solve() {
     //     has_cycle |= has_cycle_DFS_dir(i);
     // }
     // bool has_cycle = has_cycle_BFS_dir();
+
+    // ---MST---
+    // auto [tot_cst, mst_edges] = prims_mst();
+    // auto [tot_cst, mst_edges] = kruskals_mst(edges);
 }
 
 int32_t main() {
