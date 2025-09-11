@@ -5,12 +5,18 @@
   - DP on trees, rerooting
   - dist/ancestors -> binary lifting + LCA (Lowest Common Ancestor)
   - queries
-    - subtree -> euler tour (in-out) + seg tree
+    - subtree -> ETT / euler tour (in-out) + seg tree
     - path -> HLD (Heavy Light Decomposition)
     - freq/color → DSU on Trees or Mo’s.
-  - Special problems → Centroid Decomposition, Tree DP, Diameter.
-  - Dynamic trees → Link-Cut Trees, ETT.
-  - DSU on trees
+  - divide & conquer -> Centroid Decomposition
+  - Dynamic trees → Link-Cut Trees
+  - General Traversal - recusion/stack space ($O(N or logN)$ space)
+  - Morris Traversal - tree threading ($O(1)$ space)
+
+- Basic
+  - component (general), connected component (undirected), SCC (directed)
+  - undirected - maximal set where all nodes are mutually reachable
+  - directed - maximal set where every node can reach every other by following edge directions
 
 - Topological sort
   - linear ordering of vertices for a DAG such that for
@@ -68,25 +74,71 @@
   - even degree -> all vertices
   - graph is connected (isolated vertices are ignored)
 
+- hamiltonian (undirected)
+  - path = visit all vertices/nodes exactly once
+  - single component
+  - starting point matters
+  - NP-complete problem (backtracking)
+  - cycle = hamiltonian path + start = end
+
 - Minimum Spanning Tree (MST)
   - Prim's
     - start with a src, PQ stores (u, v), u is part of MST, v is outside
     - pick min-weight edge from PQ, if v is visited (ignore), else consider it
     - add neighbour edges of the vertex visited, return edges of MST
   - Kruskal's
+    - sort edges in ascending order of weights
+    - pick edges one by one and use DSU/union find to check for connectivity/cycles
 
-- bridges
-  - critical connections
-  - articulation point
+- bridges / cut-edge (Tarjan's algorithm)
+  - upon edge removal conn_components++
+  - edge that is part of a cycle can't be a bridge
+  - discovery time of one node should be less than low of the other in a cut edge
+  - main idea (bridge): child node shouldn't indirectly reach parent (`disc[parent] < low[child]`)
 
-- cycles
-  - Johnson’s algorithm - cycle enumeration
+- articulation point / cut-vertex (Tarjan's algorithm)
+  - upon node removal conn_components+=x
+  - am i the critical point and the only way for my children to reach the ancestors?
+  - low time of any neighbouring node of a cut vertex should be
+    less than or equal to discovery time of cut vertex
+  - main idea (parent is AP): any child node shouldn't indirectly reach ancestor (`disc[parent] <= low[child]`)
+  - edge case: 1 < DFS for root
+
+- (SCC) strongly connected components
+  - Kosaraju's algorithm - two pass
+    1. record finish order / kind of topo sort order via DFS
+    2. reverse edges
+    3. collect nodes in an SCC via DFS
+  - Tarjan's algorithm - single pass, uses low-link
+    - different from bridges/APs, uses the concept of "in-stack"
+    - ignore collected SCCs
+    - back edge is only considered if the visited node is part of "in-stack"
+    - low time is the smallest reachable discovery time of the nodes in the stack
+    - main idea (SCC) : pop until (`disc[u] == low[u]`)
+  - DSU
+  - Gabow’s
 
 - union find or DSU (Disjoint Set Union)
   - naive -> O(N)
   - optimal -> find (path compression) + union (size/rank) - O(⍺(N)) (amortized complexity)
     - find - path compression -> O(⍺(N))
     - union - size/rank -> O(logN)
+
+- advanced algorithms
+  - Borůvka’s - MST
+  - Johnson’s - cycle finding, APSP in $O(VE logV)$
+  - A* → Heuristic-guided shortest path
+  - Hierholzer’s Algorithm → Eulerian path/circuit. $(O(E))$
+  - Held–Karp → Hamiltonian cycle / TSP via DP. $(O(V² 2^V))$
+
+- Flow / Matching
+  - Goal: max flow, min cut, bipartite matching.
+  - Ford–Fulkerson / Edmonds–Karp → Max flow (augmenting paths). $(O(VE²))$
+  - Dinic’s Algorithm → Faster max flow with level graphs. $(O(E√V))$
+  - Push-Relabel (Goldberg–Tarjan) → Max flow with preflow + push. $(O(V³))$
+  - Hopcroft–Karp → Maximum bipartite matching. $(O(√V E))$
+  - Edmonds’ Algorithm → Minimum arborescence (directed MST).
+  - Chu–Liu/Edmonds → Minimum arborescence (directed MST).
 
 ## Additional Variations
 
