@@ -1,18 +1,5 @@
 # Graph Notes
 
-- Tree
-  - Height of the Tree = max(Depth of all nodes in the tree)
-  - DP on trees, rerooting
-  - dist/ancestors -> binary lifting + LCA (Lowest Common Ancestor)
-  - queries
-    - subtree -> ETT / euler tour (in-out) + seg tree
-    - path -> HLD (Heavy Light Decomposition)
-    - freq/color → DSU on Trees or Mo’s.
-  - divide & conquer -> Centroid Decomposition
-  - Dynamic trees → Link-Cut Trees
-  - General Traversal - recusion/stack space ($O(N or logN)$ space)
-  - Morris Traversal - tree threading ($O(1)$ space)
-
 - Basic
   - component (general), connected component (undirected), SCC (directed)
   - undirected - maximal set where all nodes are mutually reachable
