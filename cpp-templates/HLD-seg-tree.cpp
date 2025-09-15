@@ -117,19 +117,6 @@ void node_update(int u, int x) {
     ST.point_update(pos[u] - 1, x);  // i -> 0..N-1
 }
 
-// TODO: use lazy segment tree for range update
-void path_update(int u, int v, int x) {
-    while (head[u] != head[v]) {
-        if (dep[head[u]] > dep[head[v]]) swap(u, v);
-        int l = pos[head[v]], r = pos[v];
-        // TODO: update(l, r) with x using lazy segment tree
-        v = parent[head[v]];
-    }
-    int l = pos[u], r = pos[v];
-    if (l > r) swap(l, r);
-    // TODO: update(l, r) with x using lazy segment tree
-}
-
 // ----------------- debug ----------------------
 
 void print_DS() {
@@ -178,9 +165,6 @@ void solve() {
         if (ty == 1) {  // update
             cin >> x;
             node_update(u, x);
-
-            // cin >> v >> x;
-            // path_update(u, v, x);
         } else if (ty == 2) {  // query
             cin >> v;
             int res = path_query(u, v);
@@ -203,29 +187,3 @@ int32_t main() {
     while (T--) solve();
     return 0;
 }
-
-/*
-- compute subtree sizes
-- heavy child -> child having max sub_sz among all children, any in case of tie
-- light chidren -> which are not heavy
-- any path can be cut into atmost O(logN) chains -> WHY?
-    - we call a child heavy if it has max sub_sz
-    - if it is max then it will have atleast sub_sz(parent)/2
-    - sub_sz(heavy child) >= sub_sz(parent)/2 and sub_sz(light child) <=
-sub_sz(parent)/2
-    - so this process happens for atmost logN times
-- chain = contiguous block
-- heavy chain -> chain formed using only heavy nodes (different for each path)
-- light chains -> rest all branching out from this heavy chain to remaining leaf
-nodes (new chains)
-
-(TODO)
-- mark heavy and heads
-- create chains
-- mark position using timer
-- query
-- update
-
-- safe practices
-    - pos[v] != -1 maybe not safer (inside make_chains children exploration)
-*/

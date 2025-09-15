@@ -2,8 +2,8 @@
 ---------------------------------------------------
 | Indexing | parent at | left child | right child |
 ---------------------------------------------------
-|  0-based |     n     |   2n + 1   |   2n + 2    | <- iterative seg tree
-|  1-based |     n     |     2n     |   2n + 1    | <- recursive seg tree
+|  0-based |     n     |   2n + 1   |   2n + 2    | <- recursive seg tree
+|  1-based |     n     |     2n     |   2n + 1    | <- iterative seg tree
 ---------------------------------------------------
 rest of the other formulas/relationships are shifted variants
 """
@@ -91,9 +91,9 @@ class SegTree:
     """
 
     def query(self, node, start, end, l, r):
-        if l > r:  # invalid segment
+        if r < start or end < l:  # invalid segment
             return 0  # dummy/empty value
-        if l == start and end == r:  # segments exact match with range
+        if l <= start and end <= r:  # segment inside required range
             return self.tree[node]
         mid = (start + end) >> 1
         left_subtree_root = node << 1
@@ -133,3 +133,7 @@ for _ in range(q):
         results.append(ans)
 for result in results:
     print(result)
+
+"""
+TODO: lazy propogation for range updates
+"""

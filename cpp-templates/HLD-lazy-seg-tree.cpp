@@ -10,7 +10,7 @@ const int NEUTRAL = INF;  // INF for min, -INF for max, 0 for gcd/sum/XOR
 // ----------------- Segment Tree on HLD ----------------------
 struct segTree {  // 1-based segment tree
    private:
-    vector<int> seg;  // seg=flat tree
+    vector<int> SEG, ADD;  // SEG=flat tree
     int sz;
 
     int merge(int a, int b) {
@@ -21,28 +21,70 @@ struct segTree {  // 1-based segment tree
    public:
     segTree() {}  // default constructor
 
-    segTree(int n) {  // root of segment tree it is at seg[1]
+    segTree(int n) {  // root of segment tree it is at SEG[1]
         sz = n;       // N=sz
-        seg.resize(2 * sz, NEUTRAL);
+        SEG.resize(2 * sz, NEUTRAL);
+        ADD.resize(2 * sz, 0);
     }
 
-    void build(vector<int>& vec) {                          // 0-based vector
-        for (int i = 0; i < sz; ++i) seg[sz + i] = vec[i];  // N .. 2N-1
+    void build(vector<int> &vec) {                          // 0-based vector
+        for (int i = 0; i < sz; ++i) SEG[sz + i] = vec[i];  // N .. 2N-1
         for (int i = sz - 1; i; --i)
-            seg[i] = merge(seg[2 * i], seg[2 * i + 1]);  // 1 .. N-1
+            SEG[i] = merge(SEG[2 * i], SEG[2 * i + 1]);  // 1 .. N-1
     }
 
     void point_update(int ii, int x) {  // ii -> 0 .. N-1
-        seg[sz + ii] = x;
+        SEG[sz + ii] = x;
         for (int i = (sz + ii) >> 1; i; i >>= 1)
-            seg[i] = merge(seg[2 * i], seg[2 * i + 1]);
+            SEG[i] = merge(SEG[2 * i], SEG[2 * i + 1]);
+    }
+
+    void push_down(int ii) {  // ii -> leaf node
+        vector<int> ancs;     // ancs=ancestors
+        for (int i = ii >> 1; i; i >>= 1) ancs.push_back(i);
+        int n = ancs.size();
+        for (int j = n - 1, K = 1 << n; j >= 0; --j, K >>= 1) {
+            int i = ancs[j];
+            apply_add(2 * i, ADD[i], K >> 1);
+            apply_add(2 * i + 1, ADD[i], K >> 1);
+            ADD[i] = 0;
+        }
+    }
+
+    void pull_up(int ii, int K) {
+        ii >>= 1, K <<= 1;  // leaf nodes do not have children
+        for (int i = ii; i; i >>= 1, K <<= 1) {
+            SEG[i] = merge(SEG[2 * i], SEG[2 * i + 1]);
+            // + ADD[i] * K; // (for sum segment tree)
+        }
+    }
+
+    void apply_add(int ii, int x, int K) {
+        SEG[ii] += x;
+        // += x * K; // (for sum segment tree)
+        if (ii < sz) ADD[ii] += x;
+    }
+
+    void range_update(int ll, int rr, int x) {  // (ll, rr) -> 0..N-1
+        ll += sz, rr += sz;
+        push_down(ll), push_down(rr);
+
+        for (int l = ll, r = rr, K = 1; l <= r; l >>= 1, r >>= 1, K <<= 1) {
+            if (l & 1) apply_add(l++, x, K);
+            if (!(r & 1)) apply_add(r--, x, K);
+        }
+
+        pull_up(ll, 1), pull_up(rr, 1);
     }
 
     int query(int ll, int rr) {  // (ll, rr) -> 0..N-1
+        ll += sz, rr += sz;
+        push_down(ll), push_down(rr);
+
         int res = NEUTRAL;
-        for (int l = sz + ll, r = sz + rr; l <= r; l >>= 1, r >>= 1) {
-            if (l & 1) res = merge(res, seg[l++]);
-            if (!(r & 1)) res = merge(res, seg[r--]);
+        for (int l = ll, r = rr; l <= r; l >>= 1, r >>= 1) {
+            if (l & 1) res = merge(res, SEG[l++]);
+            if (!(r & 1)) res = merge(res, SEG[r--]);
         }
         return res;
     }
@@ -117,17 +159,19 @@ void node_update(int u, int x) {
     ST.point_update(pos[u] - 1, x);  // i -> 0..N-1
 }
 
-// TODO: use lazy segment tree for range update
+// TODO (not tested): use lazy segment tree for range update
 void path_update(int u, int v, int x) {
     while (head[u] != head[v]) {
         if (dep[head[u]] > dep[head[v]]) swap(u, v);
         int l = pos[head[v]], r = pos[v];
-        // TODO: update(l, r) with x using lazy segment tree
+        // TODO (not tested): update(l, r) with x using lazy segment tree
+        ST.range_update(l - 1, r - 1, x);
         v = parent[head[v]];
     }
     int l = pos[u], r = pos[v];
     if (l > r) swap(l, r);
-    // TODO: update(l, r) with x using lazy segment tree
+    // TODO (not tested): update(l, r) with x using lazy segment tree
+    ST.range_update(l - 1, r - 1, x);
 }
 
 // ----------------- debug ----------------------
@@ -203,29 +247,3 @@ int32_t main() {
     while (T--) solve();
     return 0;
 }
-
-/*
-- compute subtree sizes
-- heavy child -> child having max sub_sz among all children, any in case of tie
-- light chidren -> which are not heavy
-- any path can be cut into atmost O(logN) chains -> WHY?
-    - we call a child heavy if it has max sub_sz
-    - if it is max then it will have atleast sub_sz(parent)/2
-    - sub_sz(heavy child) >= sub_sz(parent)/2 and sub_sz(light child) <=
-sub_sz(parent)/2
-    - so this process happens for atmost logN times
-- chain = contiguous block
-- heavy chain -> chain formed using only heavy nodes (different for each path)
-- light chains -> rest all branching out from this heavy chain to remaining leaf
-nodes (new chains)
-
-(TODO)
-- mark heavy and heads
-- create chains
-- mark position using timer
-- query
-- update
-
-- safe practices
-    - pos[v] != -1 maybe not safer (inside make_chains children exploration)
-*/
